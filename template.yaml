@@ -1,0 +1,209 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  sam-node-api
+
+Transform:
+- AWS::Serverless-2016-10-31
+
+Resources:
+  # Build the API Gateway and setup an API Key
+  ApiGatewayEndpoint:
+    Type: 'AWS::Serverless::Api'
+    Properties:
+      StageName: Prod
+      Auth:
+        ApiKeyRequired: true
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          UsagePlanName: GatewayAuthorization
+
+  JWTUserTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: JWTUserTokenSecret
+      Description: "This secret has a dynamically generated secret password."
+      GenerateSecretString:
+        GenerateStringKey: 'jwt_secret'
+        PasswordLength: 30
+        ExcludeCharacters: '"@/\:;+*'''
+        SecretStringTemplate: '{"secret_name": "sam-node-app-jwt-secret"}'
+
+
+  # This is a Lambda function config associated with the source code: get-all-events.js
+  getAlleventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/get-all-events.getAllEventsHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Includes a HTTP get method to get all events from a DynamoDB table.
+      Policies:
+        # Give Create/Read/Update/Delete Permissions to the EventsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventsTable
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          SAMPLE_TABLE: !Ref EventsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: ApiGatewayEndpoint
+            Path: /v1/api/events
+            Method: GET
+
+  # This is a Lambda function config associated with the source code: get-event.js
+  getEventByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/get-event.getEventByIdHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Includes a HTTP get method to get one event by id from a DynamoDB table.
+      Policies:
+        # Give Create/Read/Update/Delete Permissions to the EventsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventsTable
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          SAMPLE_TABLE: !Ref EventsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: ApiGatewayEndpoint
+            Path: /v1/api/event/{id}
+            Method: GET
+
+  # This is a Lambda function config associated with the source code: put-item.js
+  addEventFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/add-event.addEventHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Includes a HTTP post method to add one event to a DynamoDB table.
+      Policies:
+        # Give Create/Read/Update/Delete Permissions to the EventsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EventsTable
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          SAMPLE_TABLE: !Ref EventsTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: ApiGatewayEndpoint
+            Path: /v1/api/event
+            Method: POST
+
+  # This is a Lambda function config associated with the source code: user-register.js
+  registerUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/user-register.registerUserHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: A HTTP post method to register a user and add record to a DynamoDB table.
+      Policies:
+        # Give Create/Read/Update/Delete Permissions to the UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          USER_TABLE: !Ref UsersTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: ApiGatewayEndpoint
+            Path: /v1/auth/user/register
+            Method: POST
+            Auth:
+              ApiKeyRequired: false
+
+  # This is a Lambda function config associated with the source code: user-login.js
+  loginUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/user-login.loginUserHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: A HTTP post method to login a user and fetch record from a DynamoDB table.
+      Policies:
+        # Give Create/Read/Update/Delete Permissions to the UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JWTUserTokenSecret
+        - APIGatewayGetAPIKeyPolicy:
+            SecretArn: !Ref ApiGatewayEndpoint
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          USER_TABLE: !Ref UsersTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: ApiGatewayEndpoint
+            Path: /v1/auth/user/login
+            Method: POST
+            Auth:
+              ApiKeyRequired: false
+
+  # DynamoDB table to store item: {id: &lt;ID&gt;, name: &lt;NAME&gt;}
+  EventsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: id
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+
+  # DynamoDB table to store users: {uid: &lt;UID&gt;, username: &lt;USERNAME&gt;, password: &lt;PASSWORD&gt}
+  UsersTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: username
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+
+Outputs:
+  ApiGateway:
+    Description: "The URL is:"
+    Value: !Sub "https://${ApiGatewayEndpoint}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  ApiKey:
+    Description: "You can find your API Key in the AWS console: (Put in the request HEADER as 'x-api-key')"
+    Value: !Sub "https://console.aws.amazon.com/apigateway/home?region=${AWS::Region}#/api-keys/${ApiGatewayEndpointApiKey}"
+
