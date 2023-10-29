@@ -54,7 +54,7 @@ export const addEventHandler = async (event) => {
     // Creates a new item, or replaces an old item with a new item
     var params = {
         TableName : tableName,
-        Item: { id : id, title: title, description: description, username:  userName, userid: userID}
+        Item: { id : id, title: title, description: description, added_by:  userName, added_by_id: userID}
     };
 
     try {

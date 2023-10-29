@@ -44,6 +44,8 @@ Resources:
         # Give Create/Read/Update/Delete Permissions to the EventsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref EventsTable
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JWTUserTokenSecret
       Environment:
         Variables:
           # Make table name accessible as environment variable from function code during execution
@@ -72,6 +74,8 @@ Resources:
         # Give Create/Read/Update/Delete Permissions to the EventsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref EventsTable
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JWTUserTokenSecret
       Environment:
         Variables:
           # Make table name accessible as environment variable from function code during execution
@@ -100,6 +104,8 @@ Resources:
         # Give Create/Read/Update/Delete Permissions to the EventsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref EventsTable
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JWTUserTokenSecret
       Environment:
         Variables:
           # Make table name accessible as environment variable from function code during execution
@@ -160,8 +166,6 @@ Resources:
             TableName: !Ref UsersTable
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Ref JWTUserTokenSecret
-        - APIGatewayGetAPIKeyPolicy:
-            SecretArn: !Ref ApiGatewayEndpoint
       Environment:
         Variables:
           # Make table name accessible as environment variable from function code during execution

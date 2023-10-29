@@ -48,16 +48,26 @@ export const getEventByIdHandler = async (event) => {
     Key: { id: id },
   };
 
+  var scode = 200;
+  var bdy = "";
+
   try {
     const data = await ddbDocClient.send(new GetCommand(params));
     var item = data.Item;
+    bdy = JSON.stringify(item);
+    if (!bdy) {
+      scode = 404;
+      bdy = JSON.stringify("Event details not found.");
+    }
   } catch (err) {
     console.log("Error", err);
+    scode = 400;
+    bdy = err;
   }
  
   const response = {
-    statusCode: 200,
-    body: JSON.stringify(item)
+    statusCode: scode,
+    body: bdy
   };
  
   // All log statements are written to CloudWatch
