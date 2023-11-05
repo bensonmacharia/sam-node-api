@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+// Import jwt for validating the user token
 import jwt from 'jsonwebtoken';
 
 const client = new DynamoDBClient({});
@@ -20,26 +21,25 @@ export const getAllEventsHandler = async (event) => {
     // All log statements are written to CloudWatch
     console.info('received:', event);
 
-    // get the token from the authorization header
+    // Get token from the authorization header
     const token = await event.headers.Authorization.split(" ")[1];
-    //console.info('jwt-token:', token);
     if (!token) {
         throw new Error(`Authorization token required.`);
     }
 
+    // Fetch the JWT secret string from AWS Secrets Manager 
     const secret_value = await clientsecret.send(new GetSecretValueCommand({
         SecretId: "JWTUserTokenSecret",
     }));
-
     const jwt_secret = JSON.parse(secret_value.SecretString);
 
-    //check if the token matches the supposed origin
+    //Check if the token is valid
     const decodedToken = jwt.verify(token, jwt_secret.jwt_secret);
     if (!decodedToken) {
         throw new Error(`Authorization token invalid or it has expired.`);
     }
 
-    // get all items from the table (only first 1MB data, you can use `LastEvaluatedKey` to get the rest of data)
+    // Get all items from the table (only first 1MB data, you can use `LastEvaluatedKey` to get the rest of data)
     var params = {
         TableName : tableName
     };

@@ -1,4 +1,6 @@
+// Import bcrypt for encrypting user password
 import bcrypt from 'bcryptjs';
+// Import uuid for generating unique user ID
 import { v4 as uuidv4 } from 'uuid';
 
 // Create a DocumentClient that represents the query to add an item
@@ -20,17 +22,17 @@ export const registerUserHandler = async (event) => {
     // All log statements are written to CloudWatch
     console.info('received:', event);
 
-    // Get id and name from the body of the request
+    // Get username and password from the body of the request
     const body = JSON.parse(event.body);
+    // Use a random uuidv4 string as a User ID 
     const id = uuidv4();
-    //const id = body.id;
+
     const username = body.username;
-    //const password = bcrypt.hash(body.password);
+    
+    // Generate a hashed password string
     const password = bcrypt.hashSync(body.password, 8);
 
-    //console.log("password", password);
-
-    // Creates a new item, or replaces an old item with a new item
+    // Creates a new user, or replaces an old user record with a new one
     var params = {
         TableName: tableName,
         Item: { id: id, username: username, password: password }

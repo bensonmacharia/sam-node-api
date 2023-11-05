@@ -6,12 +6,13 @@ Transform:
 - AWS::Serverless-2016-10-31
 
 Resources:
-  # Build the API Gateway and setup an API Key
+  # Create an API Gateway and add an API Key
   ApiGatewayEndpoint:
     Type: 'AWS::Serverless::Api'
     Properties:
       StageName: Prod
       Auth:
+        # Require API Key for all endpoints
         ApiKeyRequired: true
         UsagePlan:
           CreateUsagePlan: PER_API
@@ -22,6 +23,7 @@ Resources:
     Properties:
       Name: JWTUserTokenSecret
       Description: "This secret has a dynamically generated secret password."
+      # Generate a random string 30 charatcers long for the JWT secret
       GenerateSecretString:
         GenerateStringKey: 'jwt_secret'
         PasswordLength: 30
@@ -29,8 +31,8 @@ Resources:
         SecretStringTemplate: '{"secret_name": "sam-node-app-jwt-secret"}'
 
 
-  # This is a Lambda function config associated with the source code: get-all-events.js
-  getAlleventsFunction:
+  # This is a Lambda function config associated with the source code: get-all-events.js for getting all the Events.
+  getAllEventsFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: src/handlers/get-all-events.getAllEventsHandler
@@ -56,10 +58,11 @@ Resources:
           Properties:
             RestApiId:
               Ref: ApiGatewayEndpoint
+            # Expose the API through the path /v1/api/events
             Path: /v1/api/events
             Method: GET
 
-  # This is a Lambda function config associated with the source code: get-event.js
+  # This is a Lambda function config associated with the source code: get-event.js for getting a single Event by its ID
   getEventByIdFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -86,10 +89,11 @@ Resources:
           Properties:
             RestApiId:
               Ref: ApiGatewayEndpoint
+            # Expose the API through the path /v1/api/event/<id>
             Path: /v1/api/event/{id}
             Method: GET
 
-  # This is a Lambda function config associated with the source code: put-item.js
+  # This is a Lambda function config associated with the source code: put-item.js for posting an Event into the database
   addEventFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -116,10 +120,11 @@ Resources:
           Properties:
             RestApiId:
               Ref: ApiGatewayEndpoint
+            # Expose the API through the path /v1/api/event
             Path: /v1/api/event
             Method: POST
 
-  # This is a Lambda function config associated with the source code: user-register.js
+  # This is a Lambda function config associated with the source code: user-register.js for adding a new user record into the database
   registerUserFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -144,12 +149,13 @@ Resources:
           Properties:
             RestApiId:
               Ref: ApiGatewayEndpoint
+            # Expose the API through the path /v1/auth/user/register
             Path: /v1/auth/user/register
             Method: POST
             Auth:
               ApiKeyRequired: false
 
-  # This is a Lambda function config associated with the source code: user-login.js
+  # This is a Lambda function config associated with the source code: user-login.js for fetching a user record from the database
   loginUserFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -176,12 +182,13 @@ Resources:
           Properties:
             RestApiId:
               Ref: ApiGatewayEndpoint
+            # Expose the API through the path /v1/auth/user/login
             Path: /v1/auth/user/login
             Method: POST
             Auth:
               ApiKeyRequired: false
 
-  # DynamoDB table to store item: {id: &lt;ID&gt;, name: &lt;NAME&gt;}
+  # DynamoDB table to store Event details
   EventsTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
@@ -192,7 +199,7 @@ Resources:
         ReadCapacityUnits: 2
         WriteCapacityUnits: 2
 
-  # DynamoDB table to store users: {uid: &lt;UID&gt;, username: &lt;USERNAME&gt;, password: &lt;PASSWORD&gt}
+  # DynamoDB table to store User details
   UsersTable:
     Type: AWS::Serverless::SimpleTable
     Properties:

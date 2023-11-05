@@ -1,7 +1,9 @@
+// Import bcrypt for encrypting user password and comparing the password hash
 import bcrypt from 'bcryptjs';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+// Import jwt for generating the user token
 import jwt from 'jsonwebtoken';
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client);
@@ -20,19 +22,16 @@ export const loginUserHandler = async (event) => {
     // All log statements are written to CloudWatch
     console.info('received:', event);
 
-    // Get username from the body of the request
+    // Get username and password from the body of the request
     const body = JSON.parse(event.body);
     const username = body.username;
     const password = body.password;
 
+    // Fetch the JWT secret string from AWS Secrets Manager 
     const secret_value = await clientsecret.send(new GetSecretValueCommand({
         SecretId: "JWTUserTokenSecret",
     }));
-
     const jwt_secret = JSON.parse(secret_value.SecretString);
-
-    //console.log('secret-string: ', jwt_secret);
-    //console.log('secret-value: ', jwt_secret.jwt_secret);
 
     var params = {
         TableName: tableName,
@@ -46,6 +45,7 @@ export const loginUserHandler = async (event) => {
     try {
         const data = await ddbDocClient.send(new GetCommand(params));
         var item = data.Item;
+        // Comprate a hash of the received password from the request body with the password hash from the database, if they match login the user and generate a JWT token
         if (bcrypt.compareSync(password, item.password)) {
             // create JWT token
             const jwttoken = jwt.sign(
